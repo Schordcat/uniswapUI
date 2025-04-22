@@ -1,7 +1,6 @@
 // src/wagmi.ts
 import { createConfig, configureChains } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
-import { publicProvider } from 'wagmi/providers/public'
 import { jsonRpcProvider } from 'wagmi/providers/jsonRpc'
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
@@ -10,10 +9,13 @@ const { chains, publicClient, webSocketPublicClient } = configureChains(
     jsonRpcProvider({
       rpc: (chain) => {
         if (chain.id !== sepolia.id) return null
-        return { http: 'https://sepolia.infura.io/v3/0a512cbe35644d38bee10e0e77c60ed5' }
+        return {
+          http: 'https://sepolia.infura.io/v3/0a512cbe35644d38bee10e0e77c60ed5',
+        }
       },
     }),
-    publicProvider(),
+    // 👇 remove this unless you're adding a chain with a real `public.rpcUrls`
+    // publicProvider()
   ]
 )
 

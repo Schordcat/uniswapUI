@@ -1,80 +1,145 @@
-// src/App.tsx
-import React, { useMemo } from 'react';
-import { useWeb3 } from './hooks/useWeb3';
-import { useUniswapPair } from './hooks/useUniswapPair';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ResponsiveContainer,
-} from 'recharts';
+import React, { useState } from "react";
+import { ethers } from "ethers";
+import { getFunctionCall } from "./api/openai";
+import { getFunctionCallFromOpenSource } from "./api/openSource";
+import { useWallet } from "./hooks/useWallet";
+import { approveToken } from "./utils/approveToken";
+import routerAbi from "./abi/UniswapV2Router02.json";
+
+const UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dacabf31d1c8ae0";
 
 export default function App() {
-  const { address, isConnected, connectWallet, disconnectWallet } = useWeb3();
-  const { reserves, triggerSwap } = useUniswapPair();
+  const { provider, signer, address, connect } = useWallet();
+  const [nlInput, setNlInput] = useState("");
+  const [structured, setStructured] = useState<any>(null);
+  const [openSourceOutput, setOpenSourceOutput] = useState<any>(null);
+  const [openSourceUrl, setOpenSourceUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const curveData = useMemo(() => {
-    if (!reserves) return [];
-    const reserve0 = Number(reserves[0]);
-    const reserve1 = Number(reserves[1]);
-    const k = reserve0 * reserve1;
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      const args = await getFunctionCall(nlInput);
+      setStructured(args);
 
-    return Array.from({ length: 100 }, (_, i) => {
-      const x = reserve0 * (0.5 + i / 100);
-      return { x, y: k / x };
-    });
-  }, [reserves]);
+      if (openSourceUrl) {
+        const openSourceResult = await getFunctionCallFromOpenSource(nlInput, openSourceUrl);
+        setOpenSourceOutput(openSourceResult);
+      } else {
+        setOpenSourceOutput(null);
+      }
+    } catch (error) {
+      console.error("❌ Failed to interpret:", error);
+      alert("Failed to interpret natural language instruction.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSwap = async () => {
+    if (!signer || !structured) return;
+
+    const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, routerAbi, signer);
+
+    try {
+      setLoading(true);
+
+      await approveToken(
+        structured.path[0],
+        UNISWAP_ROUTER_ADDRESS,
+        structured.amountIn,
+        signer
+      );
+
+      const tx = await router.swapExactTokensForTokens(
+        structured.amountIn,
+        structured.amountOutMin,
+        structured.path,
+        structured.to,
+        structured.deadline
+      );
+
+      await tx.wait();
+      alert("✅ Swap executed!");
+    } catch (error) {
+      console.error("❌ Swap failed:", error);
+      alert("Swap failed ❌");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
-      <h1>Uniswap V2 UI</h1>
+    <div className="p-8 max-w-2xl mx-auto font-sans">
+      <h1 className="text-2xl font-bold mb-4">🦄 Uniswap NL Interface</h1>
 
-      {!isConnected ? (
-        <button onClick={() => connectWallet()}>Connect Wallet</button>
-      ) : (
-        <>
-          <p><strong>Connected:</strong> {address}</p>
-          <button onClick={() => disconnectWallet()}>Disconnect</button>
-        </>
-      )}
-
-      <div style={{ marginTop: '1rem' }}>
-        <h2>Reserves</h2>
-        {reserves ? (
-          <>
-            <p><strong>Reserve0:</strong> {reserves[0]?.toString()}</p>
-            <p><strong>Reserve1:</strong> {reserves[1]?.toString()}</p>
-            <p><strong>Last Updated:</strong> {reserves[2]}</p>
-          </>
-        ) : (
-          <p>Loading reserves...</p>
-        )}
-      </div>
-
-      <div style={{ marginTop: '2rem' }}>
-        <h2>📈 Reserve Curve (x * y = k)</h2>
-        {curveData.length > 0 && (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={curveData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="x" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="y" stroke="#8884d8" dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-
+      {/* Connect Wallet */}
       <button
-        onClick={() => triggerSwap?.()}
-        style={{ marginTop: '2rem', padding: '0.5rem 1rem' }}
+        className="bg-purple-600 text-white px-4 py-2 rounded mb-4"
+        onClick={connect}
       >
-        Trigger Swap
+        {address ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}` : "Connect Wallet"}
       </button>
+
+      {/* Open Source Endpoint Input */}
+      <div className="mb-4">
+        <label className="block text-sm mb-1 font-medium">Open Source LLM Endpoint</label>
+        <input
+          className="w-full p-2 border rounded"
+          type="text"
+          placeholder="http://localhost:11434/api/chat"
+          value={openSourceUrl}
+          onChange={(e) => setOpenSourceUrl(e.target.value)}
+        />
+      </div>
+
+      {/* NL Instruction Input */}
+      <textarea
+        className="w-full p-2 border mb-4 rounded"
+        rows={3}
+        placeholder='Try something like "swap 10 USDC for ETH"'
+        value={nlInput}
+        onChange={(e) => setNlInput(e.target.value)}
+      />
+
+      {/* Buttons */}
+      <div className="flex gap-2 mb-4">
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          Interpret Instruction
+        </button>
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded"
+          onClick={handleSwap}
+          disabled={!structured || !signer || loading}
+        >
+          Swap with MetaMask
+        </button>
+      </div>
+
+      {/* Outputs */}
+      {structured && (
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h2 className="font-semibold text-lg mb-1">🔮 OpenAI Output</h2>
+            <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
+              {JSON.stringify(structured, null, 2)}
+            </pre>
+          </div>
+
+          {openSourceOutput && (
+            <div>
+              <h2 className="font-semibold text-lg mb-1">🤖 Open Source Output</h2>
+              <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
+                {JSON.stringify(openSourceOutput, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
