@@ -1,12 +1,26 @@
-[
-  "constructor(address)",
-  "event PairCreated(address indexed,address indexed,address,uint256)",
-  "function allPairs(uint256) view returns (address)",
-  "function allPairsLength() view returns (uint256)",
-  "function createPair(address,address) returns (address)",
-  "function feeTo() view returns (address)",
-  "function feeToSetter() view returns (address)",
-  "function getPair(address,address) view returns (address)",
-  "function setFeeTo(address)",
-  "function setFeeToSetter(address)"
-]
+{
+  "abi": [
+    {
+      "inputs": [
+        { "internalType": "address", "name": "tokenA", "type": "address" },
+        { "internalType": "address", "name": "tokenB", "type": "address" }
+      ],
+      "name": "getPair",
+      "outputs": [{ "internalType": "address", "name": "pair", "type": "address" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getReserves",
+      "outputs": [
+        { "internalType": "uint112", "name": "_reserve0", "type": "uint112" },
+        { "internalType": "uint112", "name": "_reserve1", "type": "uint112" },
+        { "internalType": "uint32", "name": "_blockTimestampLast", "type": "uint32" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
+

@@ -1,29 +1,26 @@
-[
-  "constructor()",
-  "event Approval(address indexed,address indexed,uint256)",
-  "event Burn(address indexed,uint256,uint256,address indexed)",
-  "event Mint(address indexed,uint256,uint256)",
-  "event Swap(address indexed,uint256,uint256,uint256,uint256,address indexed)",
-  "event Sync(uint112,uint112)",
-  "event Transfer(address indexed,address indexed,uint256)",
-  "function allowance(address,address) view returns (uint256)",
-  "function approve(address,uint256) returns (bool)",
-  "function balanceOf(address) view returns (uint256)",
-  "function burn(address) returns (uint256, uint256)",
-  "function decimals() view returns (uint8)",
-  "function factory() view returns (address)",
-  "function getReserves() view returns (uint112, uint112, uint32)",
-  "function initialize(address,address)",
-  "function kLast() view returns (uint256)",
-  "function mint(address) returns (uint256)",
-  "function name() view returns (string)",
-  "function price0CumulativeLast() view returns (uint256)",
-  "function price1CumulativeLast() view returns (uint256)",
-  "function swap(uint256,uint256,address,bytes)",
-  "function symbol() view returns (string)",
-  "function token0() view returns (address)",
-  "function token1() view returns (address)",
-  "function totalSupply() view returns (uint256)",
-  "function transfer(address,uint256) returns (bool)",
-  "function transferFrom(address,address,uint256) returns (bool)"
-]
+{
+  "abi": [
+    {
+      "inputs": [
+        { "internalType": "address", "name": "tokenA", "type": "address" },
+        { "internalType": "address", "name": "tokenB", "type": "address" }
+      ],
+      "name": "getPair",
+      "outputs": [{ "internalType": "address", "name": "pair", "type": "address" }],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getReserves",
+      "outputs": [
+        { "internalType": "uint112", "name": "_reserve0", "type": "uint112" },
+        { "internalType": "uint112", "name": "_reserve1", "type": "uint112" },
+        { "internalType": "uint32", "name": "_blockTimestampLast", "type": "uint32" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
+

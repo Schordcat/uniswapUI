@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Interface, Log, JsonRpcProvider, id } from 'ethers';
-import UniswapV2PairABI from '../abi/UniswapV2Pair.json';
+import UniswapV2PairABI from '../../abi/UniswapV2Pair.json';
 
 export function useSwapHistory(provider: JsonRpcProvider, pairAddress: string) {
   const [swaps, setSwaps] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchSwaps() {
-      const iface = new Interface(UniswapV2PairABI);
+      const iface = new Interface(UniswapV2PairABI.abi); // ✅ Use `.abi` here
       const swapTopic = id("Swap(address,uint256,uint256,uint256,uint256,address)");
 
       try {

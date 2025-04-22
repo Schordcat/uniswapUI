@@ -1,4 +1,3 @@
-// src/wagmi.ts
 import { createConfig, http } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'

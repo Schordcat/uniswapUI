@@ -1,145 +1,90 @@
 import React, { useState } from "react";
-import { ethers } from "ethers";
-import { getFunctionCall } from "./api/openai";
-import { getFunctionCallFromOpenSource } from "./api/openSource";
-import { useWallet } from "./hooks/useWallet";
-import { approveToken } from "./utils/approveToken";
-import routerAbi from "./abi/UniswapV2Router02.json";
-
-const UNISWAP_ROUTER_ADDRESS = "0x7a250d5630b4cf539739df2c5dacabf31d1c8ae0";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  ZAxis,
+} from "recharts";
+import "./ui.css";
 
 export default function App() {
-  const { provider, signer, address, connect } = useWallet();
-  const [nlInput, setNlInput] = useState("");
-  const [structured, setStructured] = useState<any>(null);
-  const [openSourceOutput, setOpenSourceOutput] = useState<any>(null);
-  const [openSourceUrl, setOpenSourceUrl] = useState("");
+  const [reserves, setReserves] = useState({ reserve0: 1000, reserve1: 2000 });
+  const [chartData, setChartData] = useState<{ reserve0: number; reserve1: number }[]>([
+    { reserve0: 1000, reserve1: 2000 },
+  ]);
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      const args = await getFunctionCall(nlInput);
-      setStructured(args);
+  const fakeTransaction = (action: string) => {
+    setLoading(true);
+    setMessage(`Processing ${action}...`);
 
-      if (openSourceUrl) {
-        const openSourceResult = await getFunctionCallFromOpenSource(nlInput, openSourceUrl);
-        setOpenSourceOutput(openSourceResult);
-      } else {
-        setOpenSourceOutput(null);
+    setTimeout(() => {
+      let newReserves = { ...reserves };
+
+      if (action === "Swap") {
+        newReserves = {
+          reserve0: Math.max(reserves.reserve0 - 100, 1),
+          reserve1: reserves.reserve1 + 80,
+        };
+      } else if (action === "Deposit") {
+        newReserves = {
+          reserve0: reserves.reserve0 + 150,
+          reserve1: reserves.reserve1 + 150,
+        };
+      } else if (action === "Redeem") {
+        newReserves = {
+          reserve0: Math.max(reserves.reserve0 - 200, 1),
+          reserve1: Math.max(reserves.reserve1 - 200, 1),
+        };
       }
-    } catch (error) {
-      console.error("❌ Failed to interpret:", error);
-      alert("Failed to interpret natural language instruction.");
-    } finally {
+
+      // Update reserves
+      setReserves(newReserves);
+
+      // Add to chart data, keep only last 20
+      const updatedData = [...chartData, newReserves].slice(-20);
+      setChartData(updatedData);
+
       setLoading(false);
-    }
-  };
-
-  const handleSwap = async () => {
-    if (!signer || !structured) return;
-
-    const router = new ethers.Contract(UNISWAP_ROUTER_ADDRESS, routerAbi, signer);
-
-    try {
-      setLoading(true);
-
-      await approveToken(
-        structured.path[0],
-        UNISWAP_ROUTER_ADDRESS,
-        structured.amountIn,
-        signer
-      );
-
-      const tx = await router.swapExactTokensForTokens(
-        structured.amountIn,
-        structured.amountOutMin,
-        structured.path,
-        structured.to,
-        structured.deadline
-      );
-
-      await tx.wait();
-      alert("✅ Swap executed!");
-    } catch (error) {
-      console.error("❌ Swap failed:", error);
-      alert("Swap failed ❌");
-    } finally {
-      setLoading(false);
-    }
+      setMessage(`${action} successful! 🎉`);
+    }, 1000);
   };
 
   return (
-    <div className="p-8 max-w-2xl mx-auto font-sans">
-      <h1 className="text-2xl font-bold mb-4">🦄 Uniswap NL Interface</h1>
-
-      {/* Connect Wallet */}
-      <button
-        className="bg-purple-600 text-white px-4 py-2 rounded mb-4"
-        onClick={connect}
-      >
-        {address ? `Connected: ${address.slice(0, 6)}...${address.slice(-4)}` : "Connect Wallet"}
-      </button>
-
-      {/* Open Source Endpoint Input */}
-      <div className="mb-4">
-        <label className="block text-sm mb-1 font-medium">Open Source LLM Endpoint</label>
-        <input
-          className="w-full p-2 border rounded"
-          type="text"
-          placeholder="http://localhost:11434/api/chat"
-          value={openSourceUrl}
-          onChange={(e) => setOpenSourceUrl(e.target.value)}
-        />
-      </div>
-
-      {/* NL Instruction Input */}
-      <textarea
-        className="w-full p-2 border mb-4 rounded"
-        rows={3}
-        placeholder='Try something like "swap 10 USDC for ETH"'
-        value={nlInput}
-        onChange={(e) => setNlInput(e.target.value)}
-      />
-
-      {/* Buttons */}
-      <div className="flex gap-2 mb-4">
-        <button
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-          onClick={handleSubmit}
-          disabled={loading}
-        >
-          Interpret Instruction
+    <div className="container">
+      <h1>Uniswap Demo UI</h1>
+      <p>Reserve0 (X): {reserves.reserve0}</p>
+      <p>Reserve1 (Y): {reserves.reserve1}</p>
+      <div className="buttons">
+        <button onClick={() => fakeTransaction("Swap")} disabled={loading}>
+          Swap
         </button>
-        <button
-          className="bg-green-600 text-white px-4 py-2 rounded"
-          onClick={handleSwap}
-          disabled={!structured || !signer || loading}
-        >
-          Swap with MetaMask
+        <button onClick={() => fakeTransaction("Deposit")} disabled={loading}>
+          Deposit
+        </button>
+        <button onClick={() => fakeTransaction("Redeem")} disabled={loading}>
+          Redeem
         </button>
       </div>
+      <p>{message}</p>
 
-      {/* Outputs */}
-      {structured && (
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h2 className="font-semibold text-lg mb-1">🔮 OpenAI Output</h2>
-            <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
-              {JSON.stringify(structured, null, 2)}
-            </pre>
-          </div>
-
-          {openSourceOutput && (
-            <div>
-              <h2 className="font-semibold text-lg mb-1">🤖 Open Source Output</h2>
-              <pre className="bg-gray-100 p-4 rounded text-sm whitespace-pre-wrap">
-                {JSON.stringify(openSourceOutput, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
+      <h2>Reserve Curve: x * y = k</h2>
+      <ResponsiveContainer width="100%" height={300}>
+        <ScatterChart>
+          <CartesianGrid />
+          <XAxis dataKey="reserve0" type="number" name="X" />
+          <YAxis dataKey="reserve1" type="number" name="Y" />
+          <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+          <Scatter name="Reserves" data={chartData} fill="#8884d8" line />
+        </ScatterChart>
+      </ResponsiveContainer>
     </div>
   );
 }

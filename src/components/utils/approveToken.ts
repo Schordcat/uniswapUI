@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import erc20Abi from "../abi/ERC20.json";
+import erc20Abi from "../../abi/ERC20.json";
 
 export async function approveToken(
   tokenAddress: string,
